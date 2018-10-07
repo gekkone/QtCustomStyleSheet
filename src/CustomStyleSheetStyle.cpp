@@ -12,8 +12,11 @@
 #include <qlineedit.h>
 #include <qwindowsstyle.h>
 #include <qcombobox.h>
+
+#warning NO_DEPRECATED_QT5 qt5 no containse QWindowsStyle, QPlastiqueStyle
 #include <qwindowsstyle.h>
 #include <qplastiquestyle.h>
+
 //#include "private/qcssparser_p.h"
 //#include "private/qmath_p.h"
 #include <qabstractscrollarea.h>
@@ -44,7 +47,7 @@
 #include <QLineEdit>
 
 #include <limits.h>
-#include <QtGui/qtoolbar.h>
+#include <QToolBar>
 
 using namespace QCss;
 
@@ -936,21 +939,12 @@ public:
             return QString();
 
         QHash<QString, QString> &cache = m_attributeCache[WIDGET(node)];
-//        QHash<QString, QString>::const_iterator cacheIt = cache.constFind(name);
+        QHash<QString, QString>::const_iterator cacheIt = cache.constFind(name);
 
-#warning BUDFIX
-//        if (cacheIt != cache.constEnd()
-//                && !WIDGET(node)->dynamicPropertyNames().contains(name.toLatin1())) {
-////                return cacheIt.value();
-//        }
-
-#warning FIX
-        // Вот тут значения пропертей беруться из кеша, проблема с тем что
-        // stylesheet не видит какие то из неочищающегося кеша, например
-        if (WIDGET(node)->metaObject()->className() == "QComboBox") {
-            qDebug() << WIDGET(node)->metaObject()->className();
-            qDebug() << WIDGET(node)->property(name.toLatin1());
-            bool test = true;
+#warning FIX_PROPERTY_VALUE_CACHE
+        if (cacheIt != cache.constEnd()
+                && !WIDGET(node)->dynamicPropertyNames().contains(name.toLatin1())) {
+            return cacheIt.value();
         }
 
         QVariant value = WIDGET(node)->property(name.toLatin1());
@@ -1024,7 +1018,10 @@ private:
 QVector<QCss::StyleRule> CustomStyleSheetStyle::styleRules(const QWidget *w) const
 {
     QHash<const QWidget *, QVector<StyleRule> >::const_iterator cacheIt = styleSheetCaches->styleRulesCache.constFind(w);
-    if (cacheIt != styleSheetCaches->styleRulesCache.constEnd())
+
+#warning FIX_RULE_CACHE
+    if (cacheIt != styleSheetCaches->styleRulesCache.constEnd()
+            && !hasStyleProperty(w))
         return cacheIt.value();
 
     if (!initWidget(w)) {
@@ -1048,6 +1045,8 @@ QVector<QCss::StyleRule> CustomStyleSheetStyle::styleRules(const QWidget *w) con
     }
     styleSelector.styleSheets += defaultSs;
 
+#warning TODO
+    // Вынести в пересчёт стилей приложения
     if (!m_stylesheet.isEmpty()) {
         StyleSheet appSs;
         QHash<const void *, StyleSheet>::const_iterator appCacheIt = styleSheetCaches->styleSheetCache.constFind(qApp);
@@ -1097,6 +1096,8 @@ QVector<QCss::StyleRule> CustomStyleSheetStyle::styleRules(const QWidget *w) con
 
     StyleSelector::NodePtr n;
     n.ptr = (void *)w;
+
+
     QVector<QCss::StyleRule> rules = styleSelector.styleRulesForNode(n);
     styleSheetCaches->styleRulesCache.insert(w, rules);
     return rules;
@@ -1238,8 +1239,17 @@ QRenderRule CustomStyleSheetStyle::renderRule(const QWidget *w, int element, qui
     qt_check_if_internal_widget(&w, &element);
     QHash<quint64, QRenderRule> &cache = styleSheetCaches->renderRulesCache[w][element];
     QHash<quint64, QRenderRule>::const_iterator cacheIt = cache.constFind(state);
-    if (cacheIt != cache.constEnd())
-        return cacheIt.value();
+
+    bool useCache = true;
+
+    if (cacheIt != cache.constEnd()) {
+#warning FIX_RENDER_RULE_CACHE
+        if (!hasStyleProperty(w)) {
+            return cacheIt.value();
+        }
+
+        useCache = false;
+    }
 
     if (!initWidget(w))
         return QRenderRule();
@@ -1254,7 +1264,7 @@ QRenderRule CustomStyleSheetStyle::renderRule(const QWidget *w, int element, qui
     }
 
     cacheIt = cache.constFind(state & stateMask);
-    if (cacheIt != cache.constEnd()) {
+    if (useCache && cacheIt != cache.constEnd()) {
         const QRenderRule &newRule = cacheIt.value();
         cache[state] = newRule;
         return newRule;
@@ -5638,6 +5648,24 @@ bool CustomStyleSheetStyle::event(QEvent *e)
     return false;
 }
 
+bool CustomStyleSheetStyle::hasStyleProperty(const QWidget *_widget) const
+{
+    if (_widget == NULL || _widget->dynamicPropertyNames().isEmpty()) {
+        return false;
+    }
+
+    const int stylePropetriesCount = m_styleProperties.count();
+    for (int i = 0; i < stylePropetriesCount; ++i) {
+        QByteArray propertyName = m_styleProperties.at(i);
+
+        if (_widget->property(propertyName).isValid()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void CustomStyleSheetStyle::updateStyleSheetFont(QWidget* w) const
 {
     QWidget *container = containerWidget(w);
@@ -5702,9 +5730,18 @@ bool CustomStyleSheetStyle::styleSheetPalette(const QWidget* w, const QStyleOpti
     return true;
 }
 
-void CustomStyleSheetStyle::setStyleSheet(const QString stylesheet)
+void CustomStyleSheetStyle::setStyleSheet(const QString _stylesheet)
 {
-    m_stylesheet = stylesheet;
+    m_stylesheet = _stylesheet;
+}
+
+void CustomStyleSheetStyle::addStyleProperty(const QString _propertyName)
+{
+    const QByteArray propertyName = _propertyName.toLatin1();
+
+    if (!m_styleProperties.contains(propertyName)) {
+        m_styleProperties.append(propertyName);
+    }
 }
 
 Qt::Alignment CustomStyleSheetStyle::resolveAlignment(Qt::LayoutDirection layDir, Qt::Alignment src)

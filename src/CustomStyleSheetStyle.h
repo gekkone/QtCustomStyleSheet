@@ -79,7 +79,17 @@ public:
 
     bool styleSheetPalette(const QWidget* w, const QStyleOption* opt, QPalette* pal);
 
-    void setStyleSheet(const QString stylesheet);
+    /*! Задаёт описание стилей.
+     * \param[in] _stylesheet - описание стилей
+     */
+    void setStyleSheet(const QString _stylesheet);
+
+    /*! Добавляет свойство используемое для описание стилей.
+     * Для виджетов у которых задано значение такого свойства не будет кешироваться
+     * отрисованное состояние, а будет расчитываться при каждой отрисовке.
+     * \param[in] _propertyName - наименование свойства
+     */
+    void addStyleProperty(const QString _propertyName);
 
 protected Q_SLOTS:
     QIcon standardIconImplementation(StandardPixmap standardIcon, const QStyleOption *opt = 0,
@@ -94,6 +104,15 @@ protected:
     bool event(QEvent *e);
 
 private:
+    //! Свойства используемые для стилизации виджетов.
+    QList<QByteArray> m_styleProperties;
+    /*! Проверяет наличие стилевых свойств у виджета.
+     * \param[in] _widget - виджет
+     * \return true, если у виджета установлено значение для одного из свойств
+     * используемых для стилизации, false в противном случае
+     */
+    bool hasStyleProperty(const QWidget *_widget) const;
+
     int refcount;
 
     friend class QRenderRule;
