@@ -5654,8 +5654,7 @@ bool CustomStyleSheetStyle::hasStyleProperty(const QWidget *_widget) const
         return false;
     }
 
-    const int stylePropetriesCount = m_styleProperties.count();
-    for (int i = 0; i < stylePropetriesCount; ++i) {
+    for (int i = 0; i < m_styleProperties.count(); ++i) {
         QByteArray propertyName = m_styleProperties.at(i);
 
         if (_widget->property(propertyName).isValid()) {

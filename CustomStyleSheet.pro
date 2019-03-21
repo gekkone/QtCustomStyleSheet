@@ -23,8 +23,8 @@ HEADERS += \
     src/StyleAnimation.h \
     src/CssUtil.h
 
-target.path = /usr/lib
-headers.path = /usr/include
+target.path = /usr/local/lib
+headers.path = /usr/local/include
 headers.files = $$HEADERS
 
 INSTALLS += target headers
