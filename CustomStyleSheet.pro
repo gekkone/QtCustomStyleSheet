@@ -1,6 +1,6 @@
 TEMPLATE = lib
 TARGET = CustomStyleSheet
-VERSION = 1.0.1
+VERSION = 1.1.0
 
 OBJECTS_DIR = .build
 MOC_DIR = .build
